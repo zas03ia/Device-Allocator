@@ -4,6 +4,8 @@ from django.db import models
 class Employee(models.Model):
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(unique=True, max_length=150)
+    department = models.CharField(max_length=200, null=True)
+    position = models.CharField(max_length=200, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -12,8 +14,8 @@ class Employee(models.Model):
     
 class Device(models.Model):
     id = models.BigAutoField(primary_key=True)
-    name = models.CharField(max_length=300)
-    type = models.CharField(max_length=200)
+    name = models.CharField(unique=True, max_length=300)
+    device_type = models.CharField(max_length=200)
     condition = models.CharField(max_length=5000)
     specification = models.CharField(max_length=5000)
     created_at = models.DateTimeField(auto_now_add=True)

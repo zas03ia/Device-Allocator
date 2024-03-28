@@ -16,7 +16,22 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from services.views import *
+from django.conf import settings
+#from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('',dashboard, name="dashboard"),
+    path('login/',login, name="login"),
+    path('register/',register, name="register"),
+    path('logout/',logout, name="logout"),
+    path('adddevice/',adddevice, name="adddevice"),
+    path('devices/',devices, name="devices"),
+    path('devicelog/',devicelog, name="devicelog"),
+    path('deviceassign/',deviceassign, name="deviceassign"),
+    path('devicereturn/',devicereturn, name="devicereturn"),
+    path('addemployee/',addemployee, name="addemployee"),
+    path('employee/',employee, name="employee"),
+    path('employeelog/',employeelog, name="employeelog"),
 ]
