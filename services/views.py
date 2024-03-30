@@ -1,141 +1,189 @@
 from django.shortcuts import render,redirect,get_object_or_404
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login,logout
+from django.contrib.auth.decorators import login_required
 from .models import *
 from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.contrib import messages
 from django.conf import settings
-
+from datetime import datetime
+from .forms import *
 
 # Create your views here.
-def dashboard(request):
-    if request.user.is_authenticated:
-        return render(request, 'dasboard.html')
+def index(request):
+    if request.user.is_authenticated: # check for authentication
+        return redirect('dashboard')
     return render(request, 'index.html')
+
+@login_required
+def dashboard(request):
+    if not request.user.is_authenticated:
+        return redirect('index')
+    return render(request, 'dashboard.html') 
         
 
-def login(request):
+def log_in(request):
     if request.method == 'POST':
-        email = request.POST.get('email')
-        password = request.POST.get('password')
-
-        # Perform form validation
-        if not email or not password:
-            messages.error(request, 'Email and password are required.')
-            return redirect('login')
-
-        # Authenticate user
-        user = authenticate(request, email=email, password=password)
-        if user is not None:
-            # Login successful
+        form = Login(request, request.POST)
+        if form.is_valid():
+            user = form.get_user()
             login(request, user)
-            return redirect('/')
-        else:
-            # Login failed
-            messages.error(request, 'Invalid email or password.')
-            return redirect('login')
-    
-    return render(request, 'login.html')
+            return redirect('dashboard')
+    else:
+        form = Login()
+    return render(request, 'form.html', {'form': form, 'title': 'Login', 'val': "Login"})
 
 def register(request):
     if request.method == 'POST':
-        company = request.POST.get('companyname')
-        email = request.POST.get('email')
-        password = request.POST.get('password')
+        form = Registration(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('login') 
+    else:
+        form = Registration()
+    return render(request, 'form.html', {'form': form, 'title': 'Register', 'val': "Register"})
 
-        # Perform form validation
-        if not company or not email or not password:
-            messages.error(request, 'All fields are required.')
-            return redirect('signup')
-
-        # Check if a user with the given email already exists
-        if User.objects.filter(email=email).exists() or User.objects.filter(username=company).exists():
-            messages.error(request, 'An account already exists with this email.')
-            return redirect('signup')
-
-        # Create the user
-        user = User.objects.create_user(username=company, email=email, password=password)
-        user.save()
-
-        messages.success(request, 'Account created successfully. Please log in!')
-        return redirect('/')
-
-    return render(request, 'signup.html')
-
-def logout(request):
+@login_required
+def log_out(request):
     if request.user.is_authenticated:
         logout(request)
     return redirect('/')
 
-def adddevice(request):
+@login_required
+def add_device(request): # add new device 
     if request.method == 'POST':
-        name = request.POST.get('name')
-        device_type = request.POST.get('device_type')
-        condition = request.POST.get('condition')
-        specification = request.POST.get('specification')
+        form = addDevice(request.POST)
+        if form.is_valid():
+            instance = form.save(commit=False)
+            instance.user = request.user
+            instance.save()
+            return redirect('dashboard')
+    else:
+        form = addDevice()
+    
+    return render(request, 'form.html', {'form': form, 'title': 'New Device', 'val': "Add"})
 
-        # Perform form validation
-        if not name or not device_type or not condition or not specification:
-            messages.error(request, 'All fields are required.')
-            return redirect('adddevice')
-
-        # Check if a device with the given name already exists
-        if Device.objects.filter(name=name).exists():
-            messages.error(request, 'A device already exists with this name. Use a different name for individual device identification')
-            return redirect('adddevice')
-
-        # Create new device instance
-        device = Device(name=name, device_type=device_type, condition=condition, specification=specification)
-        device.save()
-
-        messages.success(request, 'Device added successfully')
-        return redirect('dashboard')
-
-    return render(request, 'adddevice.html')
-
-def addemployee(request):
+@login_required
+def add_employee(request): #add new employee
     if request.method == 'POST':
-        name = request.POST.get('name')
-        department = request.POST.get('department')
-        position = request.POST.get('position')
+        form = addEmployee(request.POST)
+        if form.is_valid():
+            instance = form.save(commit=False)
+            instance.user = request.user # Allocating to Company
+            instance.save()
+            return redirect('dashboard')  
+    else:
+        form = addEmployee()
+    
+    return render(request, 'form.html', {'form': form, 'title': 'New Employee', 'val': "Add"})
 
-        # Perform form validation
-        if not name:
-            messages.error(request, 'Employee name is required.')
-            return redirect('addemployee')
+@login_required
+def devices(request): # show existing devices specific to company
+    devices = Device.objects.filter(user=request.user.id)
+    return render(request, 'devices.html', {'devices':devices})
 
-        # Check if an employee with the given name already exists
-        if Employee.objects.filter(name=name).exists():
-            messages.error(request, 'An employee already exists with this name. Use a different name for individual employee identification')
-            return redirect('addemployee')
+@login_required
+def device_log(request, device): # show selected device log
+    log = Allocation.objects.filter(device_id=device, user=request.user.id)
+    return render(request, 'device_log.html', {'log':log, 'id': device})
 
-        # Create new device instance
-        employee = Employee(name=name)
-        if department:
-            employee.department=department    
-        if position:
-            employee.position=position
-        employee.save()
+@login_required
+def device_assign(request, device_id): # assign a device
+    if request.method=="POST":
+        # feych device to be allocated
+        device = Device.objects.get(id=request.session.get('device'), user=request.user.id) 
+        
+        #check for availability
+        if device.assigned:
+            return redirect('devices')
+        form = allocate(request.POST, user=request.user.id)
+        if form.is_valid():
+            allocation = form.save(commit=False)
+            allocation.device_id = device
+            allocation.user = request.user
+            allocation.save()
+            device.assigned = True #change device status
+            device.current_holder = allocation.employee_id #update device holder
+            device.save()
+            del request.session['device']
+            return redirect('devices')
+        return redirect(f'/deviceassign/{device.id}')
+    else:
+        request.session['device']=device_id
+        device = Device.objects.get(id=request.session.get('device'), user=request.user.id)
+        if device.assigned:
+            return redirect('devices')
+        form = allocate(user=request.user.id, initial={'assigned_condition':device.condition})
+        return render(request, 'form.html', {'form': form, 'title': f'Assign device {device.name}', 'val': "Assign"})
 
-        messages.success(request, 'Employee added successfully')
-        return redirect('dashboard')
+@login_required
+def device_return(request, device_id):
+    device = Device.objects.get(id=device_id, user=request.user.id)
+    allocation = Allocation.objects.get(device_id=device_id, employee_id=device.current_holder, user=request.user.id)
+    instance = get_object_or_404(Allocation, pk= allocation.id)
+        
+    if request.method=="POST":
+        
+        if not device.assigned:
+            return redirect('devices')
+        form = return_device(request.POST, instance=instance)
+        if form.is_valid():
+            form.save()
+            device.assigned = False # update status
+            device.current_holder = None # remove device holder
+            device.save()
+            del request.session['device']
+            return redirect('devices') 
+    else:
+        # check if device already returned
+        if not device.assigned:  
+            return redirect('devices')
+        
+        request.session['device']=device_id
+        form = return_device(instance=instance)
+        return render(request, 'form.html', {'form': form, 'title': f'Return device {device.name}', 'val': "Return"})
 
-    return render(request, 'addemployee.html')
-
-def devices(request):
-    pass
-
-def devicelog(request):
-    pass
-
-def deviceassign(request):
-    pass
-
-def devicereturn(request):
-    pass
-
+@login_required
 def employee(request):
-    pass
+    employees = Employee.objects.filter(user=request.user.id)
+    return render(request, 'employees.html', {'employees':employees})
 
-def employeelog(request):
-    pass
+@login_required
+def employee_log(request, employee):
+    log = Allocation.objects.filter(employee_id=employee, user=request.user.id)
+    return render(request, 'employee_log.html', {'log':log, 'id':employee})
+
+@login_required
+def remove_employee(request):
+    if request.method=="POST":
+        employee_id = request.POST.get("employee_id")
+        employee= Employee.objects.get(id=employee_id, user=request.user.id)
+        if employee:
+            employee.delete()
+    return redirect('employee')
+
+@login_required
+def remove_device(request):
+    if request.method=="POST":
+        device_id = request.POST.get("device_id")
+        device= Device.objects.get(id=device_id, user=request.user.id)
+        if device:
+            device.delete()
+    return redirect('devices')
+
+@login_required
+def edit_device_condition(request, device_id):
+    device = Device.objects.get(id=device_id, user=request.user.id)
+    device = get_object_or_404(Device, pk= device.id)   # accessspecific device object for form implementation 
+    if request.method=="POST":
+        if device is None:
+            return redirect('devices')
+        form = edit_device(request.POST, instance=device) # initialise form specific to employee and device
+        if form.is_valid():
+            form.save()
+            return redirect('devices') 
+    else:
+        if device is None:
+            return redirect('devices')
+        form = edit_device(instance=device)
+        return render(request, 'form.html', {'form': form, 'title': f'Edit device {device.name} condition', 'val': "Save"})

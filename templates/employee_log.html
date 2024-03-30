@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Employee log</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="">
+    </head>
+    <body>
+        <h1>Employee Log ID: {{id}}</h1>
+        <a href={% url "dashboard" %}>Go to Dashboard</a>
+        {% if not log %}<p>No entities yet to show</p>{% endif %}
+        {% for i in log %}
+        <h3>Serial Number: {{ forloop.counter }}</h3>
+        <p>Assigned device: {{i.device_id}}</p>
+        <p>Assigned device condition: {{i.assigned_condition}}</p>
+        <p>Assigned: {{i.assigned_at}}</p>
+        {% if i.returned_condition %}
+        <p>Returned device condition: {{i.returned_condition}}</p>
+        <p>Returned: {{i.returned_at}}</p>
+        {% else %}
+        <p>Status: Not Returned</p>
+        {% endif %}
+        {% endfor %}
+        <form method="POST" action="{% url "removeemployee" %}">
+            <input type='hidden' value='{{i.employee_id}}' name='employee_id'>
+            <input type ='submit' value="Remove employee">
+        </form>
+        <script src="" async defer></script>
+    </body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>Device Allocator</title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="">
+    </head>
+    <body>
+        <h1>Registered Devices</h1>
+        <a href={% url "dashboard" %}>Go to Dashboard</a>
+        {% if not devices %}<p>No entities yet to show</p>{% endif %}
+        {% for device in devices %}
+        <h3>Device Number: {{ forloop.counter }}</h3>
+        <p>Device ID: {{device.id}}</p>
+        <p>Name: {{device.name}}</p>
+        <p>Type: {{device.device_type}}</p>
+        <p>Condition: {{device.condition}}</p>
+        <p>Specification: {{device.specification}}</p>
+        <p>Created: {{device.created_at}}</p>
+        {% if device.assigned %}
+        <p>Status:Assigned</p>
+        <button><a href="/devicereturn/{{device.id}}">Return this device</a></button><br>
+        {% else %}
+        <p>Status:Not assigned</p>
+        <button><a href="/deviceassign/{{device.id}}">Assign this device</a></button><br>
+        {% endif %}
+        <button><a href="/devicelog/{{device.id}}">Device Log</a></button><br>
+        <button><a href="/editdevice/{{device.id}}">Edit Device Condition</a></button>
+        <form method="POST" action="{% url "removedevice" %}">
+            {% csrf_token %}
+            <input type='hidden' value='{{device.id}}' name='device_id'>
+            <input type ='submit' value="Remove Device">
+        </form>
+        {% endfor %}
+        
+        <script src="" async defer></script>
+    </body>
+</html>
