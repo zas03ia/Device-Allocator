@@ -25,7 +25,8 @@
         {% endif %}
         {% endfor %}
         <form method="POST" action="{% url "removedevice" %}">
-            <input type='hidden' value='{{i.device_id}}' name='device_id'>
+            {% csrf_token %}
+            <input type='hidden' value='{{id}}' name='device_id'>
             <input type ='submit' value="Remove Device">
         </form>
         <script src="" async defer></script>

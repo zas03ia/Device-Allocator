@@ -25,7 +25,8 @@
         {% endif %}
         {% endfor %}
         <form method="POST" action="{% url "removeemployee" %}">
-            <input type='hidden' value='{{i.employee_id}}' name='employee_id'>
+            {% csrf_token %}
+            <input type='hidden' value='{{id}}' name='employee_id'>
             <input type ='submit' value="Remove employee">
         </form>
         <script src="" async defer></script>
